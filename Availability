@@ -1,0 +1,196 @@
+<aura:component controller="AvailabilitySearch" implements="force:appHostable,flexipage:availableForAllPageTypes" access="global" >
+    <aura:handler name="init" value="{!this}" action="{!c.init}"/>
+    <aura:handler event="force:refreshView" action="{!c.init}"/>
+    
+    <aura:attribute name="objectLabel" type="Map"/>
+    
+    <aura:attribute name="countryList" type="List"/>
+    <aura:attribute name="attributeList" type="List"/>
+    <aura:attribute name="neighbourhoodList" type="List"/>
+    <aura:attribute name="buildingList" type="List"/>
+    <aura:attribute name="floorList" type="List"/>
+    
+    <aura:attribute name="startDate" type="Date"/>
+    <aura:attribute name="endDate" type="Date"/>
+    <aura:attribute name="selectedCountryId" type="String"/>
+    
+    <aura:attribute name="selectedNeighbourhoodId" type="String"/>
+    <aura:attribute name="selectedNeighbourhoodIds" type="List"/>
+    <aura:attribute name="selectedNeighbourhoodPills" type="List"/>
+    
+    <aura:attribute name="selectedBuildingId" type="String"/>
+    <aura:attribute name="selectedBuildingIds" type="List"/>
+    <aura:attribute name="selectedBuildingPills" type="List"/>
+    
+    <aura:attribute name="selectedFloorId" type="String"/>
+    <aura:attribute name="selectedFloorIds" type="List"/>
+    <aura:attribute name="selectedFloorPills" type="List"/>
+    
+    <aura:attribute name="selectedAttributeName" type="String"/>
+    <aura:attribute name="selectedAttributeNames" type="List"/>
+    <aura:attribute name="selectedAttributePills" type="List"/>
+    
+    <aura:attribute name="capacityName" type="String" default="{!$Label.c.OfficeCapacityConfigurationName}"/>
+    <aura:attribute name="capacityValue" type="Integer"/>
+    
+    <aura:attribute name="floorArea" type="Integer"/>
+    <aura:attribute name="unitOfMeasure" type="String"/>
+    <aura:attribute name="monthlyRate" type="Integer"/>
+    <aura:attribute name="isUnavailabilityChecked" type="Boolean" default="false"/>
+    <aura:attribute name="hideColumns" type="Boolean" default="false"/>
+    
+    <aura:attribute name="spaceResults" type="List"/>
+    <aura:attribute name="dataLoading" type="Boolean" default="false"/>
+    
+    <div class="slds-modal__content slds-page-header slds-p-around_small">
+        <div class="slds-grid slds-gutters">
+            <div class="slds-col slds-size_1-of-5 slds-border_right">
+                <div>
+                    <lightning:combobox label="{!v.objectLabel.country}" aura:id="country" placeholder="{!$Label.c.SelectCountry}" required="true" value="{!v.selectedCountryId}" options="{!v.countryList}" onchange="{!c.onCountryChange}"/>
+                </div>
+                <div class="slds-p-top_x-small slds-grid slds-gutters_xx-small">
+                    <div class="slds-col">
+                        <lightning:input label="{!$Label.c.StartDate}" type="date" aura:id="startDate" required="true" value="{!v.startDate}"/>
+                    </div>
+                    <div class="slds-col">
+                        <lightning:input label="{!$Label.c.EndDate}" type="date" aura:id="endDate" required="true" value="{!v.endDate}"/>
+                    </div>
+                </div>
+                <div class="slds-p-top_x-small">
+                    <lightning:combobox label="{!v.objectLabel.neighbourhoods}" aura:id="neighbourhoods" placeholder="{!$Label.c.NoneSelected}" value="{!v.selectedNeighbourhoodId}" options="{!v.neighbourhoodList}" onchange="{!c.insertNeighbourhoodPill}"/>
+                    <aura:iteration items ="{!v.selectedNeighbourhoodPills}" var="neighbourhood">
+                        <lightning:pill label="{!neighbourhood.label}" name ="{!neighbourhood.value}" onremove="{!c.removeNeighbourhoodPill}"/>
+                    </aura:iteration>
+                </div>
+                <div class="slds-p-top_x-small">
+                    <lightning:combobox label="{!v.objectLabel.buildings}" aura:id="buildings" placeholder="{!$Label.c.NoneSelected}" value="{!v.selectedBuildingId}" options="{!v.buildingList}" onchange="{!c.insertBuildingPill}"/>
+                    <aura:iteration items ="{!v.selectedBuildingPills}" var="building">
+                        <lightning:pill label="{!building.label}" name ="{!building.value}" onremove="{!c.removeBuildingPill}"/>
+                    </aura:iteration>
+                </div>
+                <div class="slds-p-top_x-small slds-grid slds-gutters_xx-small">
+                    <div class="slds-col slds-size_1-of-2">
+                        <lightning:combobox label="{!v.objectLabel.floors}" aura:id="floors" placeholder="{!$Label.c.NoneSelected}" value="{!v.selectedFloorId}" options="{!v.floorList}" onchange="{!c.insertFloorPill}"/>
+                        <aura:iteration items ="{!v.selectedFloorPills}" var="floor">
+                            <lightning:pill label="{!floor.label}" name ="{!floor.value}" onremove="{!c.removeFloorPill}"/>
+                        </aura:iteration>
+                    </div>
+                    <div class="slds-col slds-size_1-of-2">
+                        <lightning:input label="{!v.objectLabel.spaceSize}" type="number" aura:id="floorArea" min="0" placeholder="{!v.unitOfMeasure}" value="{!v.floorArea}"/>
+                    </div>
+                </div>
+                <div class="slds-p-top_x-small slds-grid slds-gutters_xx-small">
+                    <div class="slds-col slds-size_1-of-2">
+                        <lightning:input label="{!v.objectLabel.spaceRate}" type="number" aura:id="monthlyRate" min="0" value="{!v.monthlyRate}"/>
+                    </div>
+                    <div class="slds-col slds-size_1-of-2">
+                        <lightning:input label="{!$Label.c.OfficeCapacityConfigurationName}" type="number" aura:id="capacity" min="0" value="{!v.capacityValue}"/>
+                    </div>
+                </div>
+                <aura:if isTrue="{!$Label.c.ShowAttributeFilter}">
+                    <div class="slds-p-top_x-small">
+                        <lightning:combobox label="{!$Label.c.SpaceAttributes}" aura:id="attributes" placeholder="{!$Label.c.NoneSelected}" value="{!v.selectedAttributeName}" options="{!v.attributeList}" onchange="{!c.insertAttributePill}"/>
+                        <aura:iteration items ="{!v.selectedAttributePills}" var="attribute">
+                            <lightning:pill label="{!attribute.label}" name ="{!attribute.value}" onremove="{!c.removeAttributePill}"/>
+                        </aura:iteration>
+                    </div>
+                </aura:if>
+                <div class="slds-p-top_medium" >
+                    <lightning:input label="{!$Label.c.IncludeUnavailable}" type="checkbox" aura:id="includeUnavailable" checked="{!v.isUnavailabilityChecked}"/>
+                </div>
+                <div class="slds-p-top_medium" >
+                    <lightning:input label="{!$Label.c.CopyColumnsOnly}" type="checkbox" aura:id="hideColumns" checked="{!v.hideColumns}"/>
+                </div>
+                <div class="slds-p-top_medium slds-grid slds-gutters_xx-small">
+                    <div class="slds-col slds-size_1-of-2">
+                        <lightning:button label="{!$Label.c.Reset}" type="reset" class="slds-button_stretch" aura:id="reset" title="Reset" accesskey="r" onclick="{!c.reset}"/>
+                    </div>
+                    <div class="slds-col slds-size_1-of-2">
+                        <lightning:button label="{!$Label.c.Search}" type="submit" class="slds-button_stretch" aura:id="search" variant="brand" title="Search" accesskey="s" onclick="{!c.findAvailableSpaces}"/>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="slds-col slds-size_4-of-5 slds-p-left_none">
+                <div class="slds-box slds-p-around_none slds-scrollable">
+                    <aura:if isTrue="{!v.dataLoading}">
+                        <lightning:spinner aura:id="spinner" variant="brand" size="large"/>
+                    </aura:if>
+                    <aura:if isTrue="{!v.spaceResults == null}">
+                        <div class="slds-p-around_small slds-align_absolute-center">{!$Label.c.ApplyFilterToSearch}</div>
+                    </aura:if>
+                    <aura:if isTrue="{!v.spaceResults.length == 0}">
+                        <div class="slds-p-around_small slds-align_absolute-center">{!$Label.c.NoResults}</div>
+                    </aura:if>
+                    <aura:if isTrue="{!v.spaceResults.length > 0}">
+                        <table class="slds-table slds-table_bordered slds-table_col-bordered slds-no-row-hover slds-table_striped" role="grid">
+                            <thead>
+                                <tr>
+                                    <th scope="col">{!v.objectLabel.building}</th>
+                                    <th scope="col">{!v.objectLabel.space}</th>
+                                    <th scope="col">{!v.objectLabel.spaceSize}</th>
+                                    <aura:if isTrue="{!v.hideColumns == false}">
+                                        <th scope="col">{!$Label.c.AreaPercentage}</th>
+                                    </aura:if>
+                                    <th scope="col">{!$Label.c.SpaceCapacity}</th>
+                                    <th scope="col">{!v.objectLabel.spaceRate}</th>
+                                    <th scope="col">{!$Label.c.RatePerDesk}</th>
+                                    <th scope="col">{!v.objectLabel.status}</th>
+                                    <aura:if isTrue="{!v.hideColumns == false}">
+                                        <th scope="col">{!$Label.c.SpaceAttributes}</th>
+                                        <th scope="col">{!v.objectLabel.spaceDescription}</th>
+                                    </aura:if>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <aura:iteration items="{!v.spaceResults}" var="result">
+                                    <tr>
+                                        <th scope="row" role="gridcell">{!result.space.Building__r.Name}</th>
+                                        <td role="gridcell">
+                                            <ul>
+                                                <li>{!result.space.Floor__r.Name}</li>
+                                                <li>{!result.space.Name}</li>
+                                            </ul>
+                                        </td>
+                                        <td role="gridcell">{!result.space.AreaSize__c}</td>
+                                        <aura:if isTrue="{!v.hideColumns == false}">
+                                            <td role="gridcell">{!result.areaPercentage}</td>
+                                        </aura:if>
+                                        <td role="gridcell">
+                                            <ul>
+                                                <aura:iteration items="{!result.space.SpaceCapacity__r}" var="capacity" >
+                                                    <li>{!capacity.Name}: {!capacity.Value__c}</li>
+                                                </aura:iteration>
+                                            </ul>
+                                        </td>
+                                        <td role="gridcell">{!result.space.Rate__c}</td>
+                                        <td role="gridcell">{!result.perDeskRate}</td>
+                                        <td role="gridcell">
+                                            <ul>
+                                                <aura:iteration items="{!result.space.SpaceStatus__r}" var="status">
+                                                    <li class="{!status.ui}">
+                                                        <lightning:formattedDateTime value="{!status.From__c}"/> - <lightning:formattedDateTime value="{!status.To__c}"/>
+                                                    </li>
+                                                </aura:iteration>
+                                            </ul>
+                                        </td>
+                                        <aura:if isTrue="{!v.hideColumns == false}">
+                                            <td role="gridcell">
+                                                <ul>
+                                                    <aura:iteration items="{!result.space.SpaceAttribute__r}" var="attribute" >
+                                                        <li>{!attribute.Name}: {!attribute.Value__c}</li> 
+                                                    </aura:iteration>
+                                                </ul>
+                                            </td>
+                                            <td class="slds-cell-wrap" role="gridcell">{!result.space.Description__c}</td>
+                                        </aura:if>
+                                    </tr>
+                                </aura:iteration>
+                            </tbody>
+                        </table>
+                    </aura:if>
+                </div>
+            </div>
+        </div>
+    </div>
+</aura:component>
